@@ -32,6 +32,10 @@ from plyfile import PlyData, PlyElement
 from utils.sh_utils import SH2RGB
 from scene.gaussian_model import BasicPointCloud
 
+from .pose_utils import load_colmap_data, save_poses
+import pdb
+
+
 class CameraInfo(NamedTuple):
     uid: int
     R: np.array
@@ -190,7 +194,7 @@ def readColmapCameras(cam_extrinsics, cam_intrinsics, images_folder, path, rgb_m
             FovX = focal2fov(focal_length_x, width)
         else:
             assert False, "Colmap camera model not handled: only undistorted datasets (PINHOLE or SIMPLE_PINHOLE cameras) supported!"
-
+        # pdb.set_trace()
         image_path = os.path.join(images_folder, os.path.basename(extr.name))
         image_name = os.path.basename(image_path).split(".")[0]
         rgb_path = os.path.join(images_folder, rgb_mapping[idx])
@@ -277,11 +281,19 @@ def readColmapSceneInfo(path, images, eval, n_views=0, llffhold=8):
         cam_intrinsics = read_intrinsics_text(cameras_intrinsic_file)
 
 
-    # if not os.path.exists(ply_path):
-    #     print("Converting point3d.bin to .ply, will happen only the first time you open the scene.")
-    #     xyz, rgb, _ = read_points3D_binary(bin_path)
-    #     storePly(ply_path, xyz, rgb)
+    if not os.path.exists(ply_path):
+        print("Converting point3d.bin to .ply, will happen only the first time you open the scene.")
+        xyz, rgb, _ = read_points3D_binary(bin_path)
+        storePly(ply_path, xyz, rgb)
     pcd = fetchPly(ply_path)
+
+    pose_file = os.path.join(path, "poses_bounds.npy")
+    if not os.path.exists(pose_file):
+        print('No poses_bounds.npy, generating from colmap data' )
+        poses, pts3d, perm = load_colmap_data(path)
+        # print(poses.shape, pts3d, perm)
+        save_poses(path, poses, pts3d, perm)
+        print( 'Done with saving poses_bounds.npy' )
 
 
     reading_dir = "images" if images == None else images

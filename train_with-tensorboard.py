@@ -8,12 +8,11 @@
 #
 # For inquiries contact  george.drettakis@inria.fr
 #
-# try:
-#     from torch.utils.tensorboard import SummaryWriter
-#     TENSORBOARD_FOUND = True
-# except ImportError:
-#     TENSORBOARD_FOUND = False
-TENSORBOARD_FOUND = False
+try:
+    from torch.utils.tensorboard import SummaryWriter
+    TENSORBOARD_FOUND = True
+except ImportError:
+    TENSORBOARD_FOUND = False
 
 import numpy as np
 import os
@@ -74,6 +73,8 @@ def training(dataset, opt, pipe, args):
                     break
             except Exception as e:
                 network_gui.conn = None
+                
+        iter_start.record() ## added
 
         # Render
         if (iteration - 1) == debug_from:
@@ -134,6 +135,7 @@ def training(dataset, opt, pipe, args):
 
 
         loss.backward()
+        iter_end.record()  ## added
         with torch.no_grad():
             # Progress bar
             ema_loss_for_log = 0.4 * loss.item() + 0.6 * ema_loss_for_log
@@ -145,7 +147,7 @@ def training(dataset, opt, pipe, args):
 
             # Log and save
             training_report(tb_writer, iteration, Ll1, loss, l1_loss,
-                            testing_iterations, scene, render, (pipe, background))
+                            iter_start.elapsed_time(iter_end), testing_iterations, scene, render, (pipe, background))
 
             if iteration > first_iter and (iteration in saving_iterations):
                 print("\n[ITER {}] Saving Gaussians".format(iteration), gaussians.get_xyz.shape)
@@ -171,7 +173,7 @@ def training(dataset, opt, pipe, args):
             if iteration < opt.iterations:
                 gaussians.optimizer.step()
                 gaussians.optimizer.zero_grad(set_to_none = True)
-
+            
             gaussians.update_learning_rate(iteration)
             if (iteration - args.start_sample_pseudo - 1) % opt.opacity_reset_interval == 0 and \
                     iteration > args.start_sample_pseudo:
@@ -203,7 +205,7 @@ def prepare_output_and_logger(args):
 
 
 
-def training_report(tb_writer, iteration, Ll1, loss, l1_loss, testing_iterations, scene : Scene, renderFunc, renderArgs):
+def training_report(tb_writer, iteration, Ll1, loss, l1_loss, elapsed, testing_iterations, scene : Scene, renderFunc, renderArgs):
     if tb_writer:
         tb_writer.add_scalar('train_loss_patches/l1_loss', Ll1.item(), iteration)
         tb_writer.add_scalar('train_loss_patches/total_loss', loss.item(), iteration)
@@ -245,7 +247,7 @@ def training_report(tb_writer, iteration, Ll1, loss, l1_loss, testing_iterations
                     tb_writer.add_scalar(config['name'] + '/loss_viewpoint - psnr', psnr_test, iteration)
 
         if tb_writer:
-            tb_writer.add_histogram("scene/opacity_histogram", scene.gaussians.get_opacity, iteration)
+            # tb_writer.add_histogram("scene/opacity_histogram", scene.gaussians.get_opacity, iteration)
             tb_writer.add_scalar('total_points', scene.gaussians.get_xyz.shape[0], iteration)
         torch.cuda.empty_cache()
 

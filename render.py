@@ -60,10 +60,14 @@ def render_video(source_path, model_path, iteration, views, gaussians, pipeline,
         render_poses = generate_spiral_path(np.load(source_path + '/poses_bounds.npy'))
     elif source_path.find('360') != -1:
         render_poses = generate_ellipse_path(views)
+    else:
+        # render_poses = generate_spiral_path(np.load(source_path + '/poses_bounds.npy'))
+        render_poses = generate_ellipse_path(views)
 
     size = (view.original_image.shape[2], view.original_image.shape[1])
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    final_video = cv2.VideoWriter(os.path.join(render_path, 'final_video.mp4'), fourcc, fps, size)
+    # final_video = cv2.VideoWriter(os.path.join(render_path, 'final_video_spiral.mp4'), fourcc, fps, size)
+    final_video = cv2.VideoWriter(os.path.join(render_path, 'final_video_elliptical.mp4'), fourcc, fps, size)
     # final_video = cv2.VideoWriter(os.path.join('/ssd1/zehao/gs_release/video/', str(iteration), model_path.split('/')[-1] + '.mp4'), fourcc, fps, size)
 
     for idx, pose in enumerate(tqdm(render_poses, desc="Rendering progress")):
